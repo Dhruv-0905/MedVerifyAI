@@ -1,4 +1,57 @@
-venv
-__pycache__
+# --- Python & Conda ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+develop-eggs/
+lib/
+lib64/
+
+# --- IDE Settings ---
+.vscode/
+.idea/
+*.swp
+*.swo
+.project
+.classpath
+
+# --- Environment & Secrets (CRITICAL) ---
 .env
-test.py
+.env.local
+.env.*
+*.pem
+*.key
+
+# --- Streamlit ---
+# Ignore secrets but allow config.toml if you want to share themes
+.streamlit/secrets.toml
+# If you want to hide the whole folder, uncomment the next line instead:
+# .streamlit/
+
+# --- Data & Logs ---
+*.log
+logs/
+*.sqlite
+*.db
+
+# Data handling - BE CAREFUL
+data/
+# Only un-ignore specific public sample files if needed:
+!data/sample_data.csv
+!data/dummy_patients.json 
+
+# --- Testing ---
+.coverage
+htmlcov/
+.pytest_cache/
+
+# --- OS ---
+.DS_Store
+Thumbs.db
