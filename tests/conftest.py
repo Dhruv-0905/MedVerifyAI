@@ -1,14 +1,13 @@
 """
-Pytest configuration and fixtures for MediSure testing
+Pytest configuration and fixtures for MediSure tests
 """
 import pytest
 import pandas as pd
-from pathlib import Path
 
 
 @pytest.fixture
 def sample_record():
-    """Single valid provider record for testing"""
+    """Fixture providing a perfect sample record"""
     return {
         'id': 1,
         'name': 'Dr. Rajesh Sharma',
@@ -23,55 +22,61 @@ def sample_record():
 
 
 @pytest.fixture
-def sample_invalid_record():
-    """Invalid provider record for testing"""
+def sample_dataframe():
+    """
+    Fixture providing a sample DataFrame with mixed quality records
+    
+    Records breakdown:
+    - Record 1: VALID (all fields correct)
+    - Record 2: Invalid phone (too short)
+    - Record 3: Invalid pincode (5 digits instead of 6)
+    - Record 4: Invalid specialty (not in list)
+    - Record 5: Invalid registration (only 3 digits)
+    """
+    data = {
+        'id': [1, 2, 3, 4, 5],
+        'name': ['Dr. A', 'Dr. B', 'Dr. C', 'Dr. D', 'Dr. E'],
+        'phone': ['9876543210', '12345', '9876543212', '9876543213', '9876543215'],  # B invalid
+        'city': ['Bangalore', 'Mumbai', 'Delhi', 'Chennai', 'Bangalore'],  # E has typo below
+        'specialty': ['Cardiology', 'Neurology', 'Orthopedics', 'InvalidSpec', 'Dermatology'],  # D invalid
+        'registration_no': ['MCI10012345', 'MCI10012346', 'MCI10012347', 'MCI10012348', 'MCI005'],  # E invalid
+        'years_practice': [5, 10, 3, 15, 12],
+        'clinic_address': ['Addr 1', 'Addr 2', 'Addr 3', 'Addr 4', 'Addr 5'],
+        'pincode': ['560001', '400001', '12345', '600001', '560002']  # C invalid (5 digits)
+    }
+    return pd.DataFrame(data)
+
+
+@pytest.fixture
+def invalid_record():
+    """Fixture providing an invalid record (missing required fields)"""
     return {
-        'id': 99,
+        'id': 999,
         'name': 'Dr. Invalid',
-        'phone': '12345',  # Too short
-        'city': 'UnknownCity',
-        'specialty': 'FakeSpecialty',
-        'registration_no': 'INVALID',
-        'years_practice': 100,  # Suspicious
-        'clinic_address': 'Test',
-        'pincode': '123'  # Invalid
+        # Missing phone, city, specialty, registration_no, clinic_address, pincode
     }
 
 
 @pytest.fixture
-def sample_dataframe():
-    """Sample DataFrame with 5 records"""
-    data = [
+def batch_records():
+    """Fixture providing a batch of mixed records"""
+    return [
         {
-            'id': 1, 'name': 'Dr. A', 'phone': '9876543210',
+            'id': 1, 'name': 'Dr. Perfect', 'phone': '9876543210',
             'city': 'Bangalore', 'specialty': 'Cardiology',
-            'registration_no': 'MCI001', 'years_practice': 5,
-            'clinic_address': 'Addr 1', 'pincode': '560001'
+            'registration_no': 'MCI10012345', 'clinic_address': 'Test 1',
+            'pincode': '560001'
         },
         {
-            'id': 2, 'name': 'Dr. B', 'phone': '9876543211',
-            'city': 'Chennai', 'specialty': 'Neurology',
-            'registration_no': 'MCI002', 'years_practice': 10,
-            'clinic_address': 'Addr 2', 'pincode': '600018'
+            'id': 2, 'name': 'Dr. BadPhone', 'phone': '123',
+            'city': 'Mumbai', 'specialty': 'Neurology',
+            'registration_no': 'MCI10012346', 'clinic_address': 'Test 2',
+            'pincode': '400001'
         },
         {
-            'id': 3, 'name': 'Dr. C', 'phone': '9876543210',  # Duplicate phone
-            'city': 'Mumbai', 'specialty': 'Orthopedics',
-            'registration_no': 'MCI003', 'years_practice': 3,
-            'clinic_address': 'Addr 3', 'pincode': '400001'
-        },
-        {
-            'id': 4, 'name': 'Dr. D', 'phone': '98765',  # Invalid phone
-            'city': 'Delhi', 'specialty': 'Pediatrics',
-            'registration_no': 'MCI004', 'years_practice': 7,
-            'clinic_address': 'Addr 4', 'pincode': '110001'
-        },
-        {
-            'id': 5, 'name': 'Dr. E', 'phone': '9876543215',
-            'city': 'Banaglore',  # Typo in city
-            'specialty': 'Dermatology',
-            'registration_no': 'MCI005', 'years_practice': 12,
-            'clinic_address': 'Addr 5', 'pincode': '560002'
+            'id': 3, 'name': 'Dr. BadPincode', 'phone': '9876543212',
+            'city': 'Delhi', 'specialty': 'Orthopedics',
+            'registration_no': 'MCI10012347', 'clinic_address': 'Test 3',
+            'pincode': '12345'
         }
     ]
-    return pd.DataFrame(data)
