@@ -287,8 +287,9 @@ elif menu == "Batch Processing":
                 progress_bar = st.progress(0)
                 status_text = st.empty()
                 
-                # Initialize Orchestrator
+                # Initialize Orchestrator and clear duplicate database
                 orchestrator = MultiAgentOrchestrator()
+                orchestrator.clear_duplicate_database()  # ✅ FIX 1: Start fresh
                 
                 # Process Loop
                 total_records = len(df)
@@ -297,6 +298,9 @@ elif menu == "Batch Processing":
                 # Create a tab for live logs
                 log_container = st.container()
                 
+                # 🔍 DEBUG: Show score breakdown for first record
+                show_debug = True
+                
                 for index, row in df.iterrows():
                     # Update status
                     status_text.text(f"Processing Record {index + 1}/{total_records}: {row.get('name', 'Unknown')}")
@@ -304,8 +308,31 @@ elif menu == "Batch Processing":
                     # Convert row to dict
                     record = row.to_dict()
                     
-                    # Run Validation Pipeline
-                    result = orchestrator.validate_provider(record)
+                    # Run Validation Pipeline with duplicate checking
+                    result = orchestrator.validate_provider(record, check_duplicates=True)  # ✅ FIX 2: Enable duplicate check
+                    
+                    # 🔍 DEBUG: Log first record's score breakdown
+                    if show_debug and index == 0:
+                        with st.expander("🔍 Debug Info - First Record Score Breakdown"):
+                            st.write(f"**Record:** {record.get('name')}")
+                            st.write(f"**Agent 1 (Validation):** {result['agent1_validation']['confidence_agent1']}/100")
+                            st.write(f"**Agent 2 (Enrichment):** {result['agent2_enrichment']['confidence_agent2']}/60")
+                            st.write(f"**Agent 3 (Cross-Validation):** {result['agent3_cross_validation']['confidence_agent3']}/40")
+                            st.write(f"**Total Score:** {result['combined_score']}/200 ({result['combined_confidence_percentage']}%)")
+                            st.write(f"**Decision:** {result['decision']}")
+                            
+                            # Show Agent 3 details
+                            agent3_details = result['agent3_cross_validation'].get('cross_validation_details', {})
+                            st.write("**Agent 3 Breakdown:**")
+                            st.json(agent3_details)
+                        show_debug = False  # Only show once
+                    
+                    # ✅ FIX 3: Register approved providers to prevent duplicates in same batch
+                    if result['decision'] in ['AUTO_APPROVE', 'CONDITIONAL_APPROVE']:
+                        try:
+                            orchestrator.register_approved_provider(result['enriched_record'])
+                        except:
+                            pass  # If registration fails, continue
                     
                     # Store key results for the summary table
                     summary_row = {
@@ -330,12 +357,26 @@ elif menu == "Batch Processing":
                 # Display Results Table
                 results_df = pd.DataFrame(results_list)
                 
+                # ✅ FIX 4: Add summary statistics
+                st.markdown("### 📊 Processing Summary")
+                col1, col2, col3, col4 = st.columns(4)
+                col1.metric("AUTO_APPROVE", len(results_df[results_df['Decision'] == 'AUTO_APPROVE']))
+                col2.metric("CONDITIONAL", len(results_df[results_df['Decision'] == 'CONDITIONAL_APPROVE']))
+                col3.metric("MANUAL_REVIEW", len(results_df[results_df['Decision'] == 'MANUAL_REVIEW']))
+                col4.metric("REJECT", len(results_df[results_df['Decision'] == 'REJECT']))
+                
                 # Color coding function for the dataframe
                 def color_decision(val):
-                    color = 'green' if 'APPROVE' in val else 'orange' if 'REVIEW' in val else 'red'
-                    return f'color: {color}; font-weight: bold'
+                    if 'AUTO_APPROVE' in val:
+                        return 'background-color: #d4edda; color: #155724; font-weight: bold'
+                    elif 'CONDITIONAL' in val:
+                        return 'background-color: #fff3cd; color: #856404; font-weight: bold'
+                    elif 'REVIEW' in val:
+                        return 'background-color: #fff3cd; color: #856404; font-weight: bold'
+                    else:  # REJECT
+                        return 'background-color: #f8d7da; color: #721c24; font-weight: bold'
 
-                st.markdown("### 📊 Processing Results")
+                st.markdown("### 📋 Detailed Results")
                 st.dataframe(
                     results_df.style.applymap(color_decision, subset=['Decision']),
                     use_container_width=True
@@ -343,16 +384,18 @@ elif menu == "Batch Processing":
                 
                 # Download Report Button
                 csv = results_df.to_csv(index=False).encode('utf-8')
+                timestamp = time.strftime('%Y-%m-%d_%H-%M')
                 st.download_button(
                     "📥 Download Summary Report",
                     csv,
-                    "validation_report.csv",
+                    f"validation_report_{timestamp}.csv",
                     "text/csv",
                     key='download-csv'
                 )
                 
         except Exception as e:
             st.error(f"Error processing file: {str(e)}")
+            st.exception(e)  # Show full traceback for debugging
             
     else:
         # Show Template Download
@@ -360,8 +403,8 @@ elif menu == "Batch Processing":
         
         # Create a sample template on the fly for them to download
         sample_data = pd.DataFrame([
-            {"name": "Dr. Sample", "phone": "9876543210", "city": "Bangalore", "specialty": "Cardiology", "pincode": "560001", "registration_no": "MCI-123", "clinic_address": "MG Road"},
-            {"name": "Dr. Test", "phone": "+91-98765-43210", "city": "Banaglore", "specialty": "CARDIO", "pincode": "560001", "registration_no": "MCI-456", "clinic_address": "Indiranagar"}
+            {"name": "Dr. Sample", "phone": "9876543210", "city": "Bangalore", "specialty": "Cardiology", "pincode": "560001", "registration_no": "MCI10012345", "clinic_address": "123 MG Road Bangalore", "years_practice": "10"},
+            {"name": "Dr. Test", "phone": "+91-9876543210", "city": "Mumbai", "specialty": "Pediatrics", "pincode": "400001", "registration_no": "MMC20012345", "clinic_address": "Marine Drive", "years_practice": "8"}
         ])
         csv_template = sample_data.to_csv(index=False).encode('utf-8')
         
@@ -371,6 +414,7 @@ elif menu == "Batch Processing":
             "medverify_template.csv",
             "text/csv"
         )
+
 
 # ============================================================================
 # ANALYTICS DASHBOARD

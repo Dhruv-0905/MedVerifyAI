@@ -184,7 +184,7 @@ class Agent1DataValidation:
         # ====================================================================
         # CHECK 1: REQUIRED FIELDS PRESENT (20 points)
         # ====================================================================
-        result = _validate_required_fields(record) # Call underlying function directly
+        result = _validate_required_fields(record)
         score += result['score']
         if result['issue']:
             issues.append(result['issue'])
@@ -203,7 +203,7 @@ class Agent1DataValidation:
         # CHECK 2: PHONE FORMAT (20 points)
         # ====================================================================
         phone = record.get('phone', '')
-        result = _validate_phone(phone) # Call underlying function
+        result = _validate_phone(phone)
         score += result['score']
         if result['issue']:
             issues.append(result['issue'])
@@ -212,7 +212,7 @@ class Agent1DataValidation:
         # CHECK 3: PINCODE FORMAT (20 points)
         # ====================================================================
         pincode = record.get('pincode', '')
-        result = _validate_pincode(pincode) # Call underlying function
+        result = _validate_pincode(pincode)
         score += result['score']
         if result['issue']:
             issues.append(result['issue'])
@@ -221,7 +221,7 @@ class Agent1DataValidation:
         # CHECK 4: SPECIALTY IN APPROVED LIST (20 points)
         # ====================================================================
         specialty = record.get('specialty', '')
-        result = _validate_specialty(specialty) # Call underlying function
+        result = _validate_specialty(specialty)
         score += result['score']
         if result['issue']:
             issues.append(result['issue'])
@@ -230,7 +230,7 @@ class Agent1DataValidation:
         # CHECK 5: REGISTRATION NUMBER PATTERN (20 points)
         # ====================================================================
         registration_no = record.get('registration_no', '')
-        result = _validate_registration(registration_no) # Call underlying function
+        result = _validate_registration(registration_no)
         score += result['score']
         if result['issue']:
             issues.append(result['issue'])
@@ -295,9 +295,6 @@ def agent_1_validation(record: Dict) -> Dict[str, Any]:
 # ============================================================================
 # AGENT 2: INFORMATION ENRICHMENT ENGINE
 # ============================================================================
-
-# Import enrichment helpers
-# (Assuming enrichment_helpers is available in path)
 
 # ============================================================================
 # ENRICHMENT TOOLS (CrewAI Tool Pattern)
@@ -597,9 +594,6 @@ def agent_2_enrichment(record: Dict) -> Dict[str, Any]:
 # AGENT 3: CROSS-VALIDATION ENGINE
 # ============================================================================
 
-# Import cross-validation helpers
-# (Assuming cross_validation_helpers is available in path)
-
 # ============================================================================
 # CROSS-VALIDATION TOOLS (CrewAI Tool Pattern)
 # ============================================================================
@@ -757,17 +751,13 @@ class Agent3CrossValidation:
     def cross_validate_record(self, record: Dict, check_duplicates: bool = True) -> Dict[str, Any]:
         """
         Cross-validate a single provider record.
+        
         Args:
-            record (dict): Provider record with keys: name, phone, city, specialty,
-                          registration_no, clinic_address, pincode, years_practice
+            record (dict): Provider record
             check_duplicates (bool): Whether to check for duplicates
+        
         Returns:
-            dict: {
-                'confidence_agent3': int (0-40),
-                'cross_validation_flags': list of str,
-                'execution_time_agent3': float (milliseconds),
-                'cross_validation_details': dict
-            }
+            dict: Cross-validation results with score 0-40
         """
         start_time = time.time()
         score = 0
@@ -794,7 +784,7 @@ class Agent3CrossValidation:
             
             details['duplicate_check'] = result
         else:
-            score += 10 # Skip duplicate check
+            score += 10  # Skip duplicate check
             details['duplicate_check'] = {'skipped': True, 'score': 10}
 
         # ====================================================================
@@ -813,40 +803,29 @@ class Agent3CrossValidation:
 
         # ====================================================================
         # CHECK 3: YEARS PRACTICE VALIDATION (+10 points)
+        # ✅ FIX: Always call helper - it handles missing data internally!
         # ====================================================================
         years_practice = record.get('years_practice')
-
-        # ADAPTIVE LOGIC: If missing, don't penalize
-        # Handle None, empty string, 'nan', 'NaN', 'none'
-        years_str = str(years_practice).strip().lower()
-        if (years_practice is None or 
-            years_str == '' or 
-            years_str == 'none' or 
-            years_str == 'nan'):
-            score += 10
-            details['years_practice_check'] = {
-                'is_valid': True,
-                'message': 'Skipped (Not provided) - No Penalty',
-                'score': 10
-            }
+        result = _validate_years_practice_func(years_practice)
+        score += result['score']
+        details['years_practice_check'] = result
+        
+        if not result['is_valid']:
+            flags.append('⚠️ ANOMALY_PRACTICE_YEARS')
 
         # ====================================================================
         # CHECK 4: GEOGRAPHIC CONSISTENCY (+10 points)
+        # ✅ FIX: Always call helper - it handles missing data internally!
         # ====================================================================
         clinic_address = record.get('clinic_address', '')
         city = record.get('city', '')
         pincode = record.get('pincode', '')
-
-        # ADAPTIVE LOGIC: If missing address parts, don't penalize
-        if not clinic_address or not city or not pincode:
-             score += 10
-             details['geographic_check'] = {'is_consistent': True, 'message': 'Skipped (Incomplete address) - No Penalty', 'score': 10}
-        else:
-            result = _verify_geographic_func(clinic_address, city, pincode)
-            score += result['score']
-            details['geographic_check'] = result
-            if not result['is_consistent']:
-                flags.append('⚠️ GEOGRAPHIC_MISMATCH')
+        result = _verify_geographic_func(clinic_address, city, pincode)
+        score += result['score']
+        details['geographic_check'] = result
+        
+        if not result['is_consistent']:
+            flags.append('⚠️ GEOGRAPHIC_MISMATCH')
 
         # ====================================================================
         # CALCULATE EXECUTION TIME
@@ -921,6 +900,7 @@ def agent_3_cross_validation(record: Dict, check_duplicates: bool = True) -> Dic
     """
     agent = Agent3CrossValidation()
     return agent.cross_validate_record(record, check_duplicates)
+
 
 
 # ============================================================================
