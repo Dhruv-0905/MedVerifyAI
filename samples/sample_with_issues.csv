@@ -1,0 +1,5 @@
+name,phone,city,specialty,registration_no,years_practice,clinic_address,pincode
+Dr. Valid Record,9876543210,Bangalore,Cardiology,MCI10012345,10,Address,560001
+Dr. Invalid Years,9876543211,Mumbai,Dermatology,MCI10012346,150,Address,400001
+Dr. Invalid Pincode,9876543212,Delhi,Orthopedics,MCI10012347,8,Address,12345
+Dr. Missing Phone,,Chennai,Neurology,MCI10012348,10,Address,600040
