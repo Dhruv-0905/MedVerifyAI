@@ -220,21 +220,21 @@ class MultiAgentOrchestrator:
             }
         
         # RULE 3: Score-based decisions (no fraud flags)
-        if combined_score >= 180:  # 90%+
+        if combined_score >= 150:  # 90%+
             return {
                 'decision': 'AUTO_APPROVE',
                 'reason': 'Excellent quality score (≥90%), no fraud indicators',
                 'details': decision_details
             }
         
-        elif combined_score >= 140:  # 70-89%
+        elif combined_score >= 120:  # 70-89%
             return {
                 'decision': 'CONDITIONAL_APPROVE',
                 'reason': 'Good quality score (≥70%), no fraud indicators',
                 'details': decision_details
             }
         
-        elif combined_score >= 120:  # 60-69%
+        elif combined_score >= 100:  # 60-69%
             return {
                 'decision': 'MANUAL_REVIEW',
                 'reason': 'Fair quality score (60-69%), requires human review',

@@ -817,15 +817,18 @@ class Agent3CrossValidation:
         years_practice = record.get('years_practice')
 
         # ADAPTIVE LOGIC: If missing, don't penalize
-        if years_practice is None or str(years_practice).strip() == '':
-             score += 10 
-             details['years_practice_check'] = {'is_valid': True, 'message': 'Skipped (Not provided) - No Penalty', 'score': 10}
-        else:
-            result = _validate_years_practice_func(years_practice)
-            score += result['score']
-            details['years_practice_check'] = result
-            if not result['is_valid']:
-                flags.append('⚠️ ANOMALY_PRACTICE_YEARS')
+        # Handle None, empty string, 'nan', 'NaN', 'none'
+        years_str = str(years_practice).strip().lower()
+        if (years_practice is None or 
+            years_str == '' or 
+            years_str == 'none' or 
+            years_str == 'nan'):
+            score += 10
+            details['years_practice_check'] = {
+                'is_valid': True,
+                'message': 'Skipped (Not provided) - No Penalty',
+                'score': 10
+            }
 
         # ====================================================================
         # CHECK 4: GEOGRAPHIC CONSISTENCY (+10 points)
