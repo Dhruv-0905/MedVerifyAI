@@ -223,10 +223,10 @@ PHONE_PATTERNS = [
 ]
 
 # Registration number patterns (NMC format)
-# Examples: MCI10012345, TN0001234, KA123456
+# Examples: MCI10012345, TN-123, KA123456
 REG_PATTERNS = [
-    r'^[A-Z]{2,4}\d{5,11}$',   # 2-4 letters + 5-11 digits
-    r'^[A-Z]{2,4}-\d{5,11}$',  # 2-4 letters + dash + 5-11 digits
+    r'^[A-Z]{2,4}\d{3,11}$',   # 2-4 letters + 3-11 digits (e.g., MCI12345)
+    r'^[A-Z]{2,4}-\d{3,11}$',  # 2-4 letters + dash + 3-11 digits (e.g., TN-123)
 ]
 
 # ============================================================================

@@ -19,6 +19,27 @@ from lookup_tables_extended import (
     SPECIALTY_LIST
 )
 
+# Import enrichment helpers
+from enrichment_helpers import (
+    normalize_phone,
+    fuzzy_match_city,
+    normalize_specialty_enhanced,
+    verify_pincode_city,
+    enrich_address,
+    enrich_record_fields
+)
+
+# Import cross-validation helpers
+from cross_validation_helpers import (
+    detect_duplicate,
+    verify_registration_number,
+    validate_years_practice,
+    verify_geographic_consistency,
+    cross_validate_record,
+    register_provider,
+    clear_provider_database
+)
+
 
 # ============================================================================
 # CORE VALIDATION FUNCTIONS (Direct callable functions)
@@ -31,14 +52,12 @@ def _validate_phone(phone: str) -> Dict[str, Any]:
     else:
         return {'valid': False, 'score': 0, 'issue': f"Invalid phone format: {phone}"}
 
-
 def _validate_pincode(pincode: str) -> Dict[str, Any]:
     """Validate Indian 6-digit pincode."""
     if is_valid_pincode(pincode):
         return {'valid': True, 'score': 20, 'issue': None}
     else:
         return {'valid': False, 'score': 0, 'issue': f"Invalid pincode format: {pincode}"}
-
 
 def _validate_specialty(specialty: str) -> Dict[str, Any]:
     """Validate specialty against approved list."""
@@ -50,13 +69,12 @@ def _validate_specialty(specialty: str) -> Dict[str, Any]:
     
     if specialty_upper in specialty_list_upper:
         return {'valid': True, 'score': 20, 'issue': None}
-    
+        
     normalized = normalize_specialty(specialty)
     if normalized:
         return {'valid': True, 'score': 15, 'issue': f"Specialty matched (normalized): {normalized}"}
-    
+        
     return {'valid': False, 'score': 0, 'issue': f"Specialty '{specialty}' not in approved list"}
-
 
 def _validate_registration(registration_no: str) -> Dict[str, Any]:
     """Validate registration number format."""
@@ -64,7 +82,6 @@ def _validate_registration(registration_no: str) -> Dict[str, Any]:
         return {'valid': True, 'score': 20, 'issue': None}
     else:
         return {'valid': False, 'score': 0, 'issue': f"Registration number '{registration_no}' format invalid"}
-
 
 def _validate_required_fields(record: Dict) -> Dict[str, Any]:
     """Validate all required fields are present."""
@@ -84,71 +101,27 @@ def _validate_required_fields(record: Dict) -> Dict[str, Any]:
 
 @tool("validate_phone_tool")
 def validate_phone_tool(phone: str) -> Dict[str, Any]:
-    """
-    Validate Indian phone number format.
-    
-    Args:
-        phone: Phone number string
-    
-    Returns:
-        dict: {'valid': bool, 'score': int, 'issue': str or None}
-    """
+    """Validate Indian phone number format."""
     return _validate_phone(phone)
-
 
 @tool("validate_pincode_tool")
 def validate_pincode_tool(pincode: str) -> Dict[str, Any]:
-    """
-    Validate Indian 6-digit pincode.
-    
-    Args:
-        pincode: Pincode string
-    
-    Returns:
-        dict: {'valid': bool, 'score': int, 'issue': str or None}
-    """
+    """Validate Indian 6-digit pincode."""
     return _validate_pincode(pincode)
-
 
 @tool("validate_specialty_tool")
 def validate_specialty_tool(specialty: str) -> Dict[str, Any]:
-    """
-    Validate specialty against approved list.
-    
-    Args:
-        specialty: Medical specialty string
-    
-    Returns:
-        dict: {'valid': bool, 'score': int, 'issue': str or None}
-    """
+    """Validate specialty against approved list."""
     return _validate_specialty(specialty)
-
 
 @tool("validate_registration_tool")
 def validate_registration_tool(registration_no: str) -> Dict[str, Any]:
-    """
-    Validate registration number format.
-    
-    Args:
-        registration_no: Registration number string
-    
-    Returns:
-        dict: {'valid': bool, 'score': int, 'issue': str or None}
-    """
+    """Validate registration number format."""
     return _validate_registration(registration_no)
-
 
 @tool("validate_required_fields_tool")
 def validate_required_fields_tool(record: Dict) -> Dict[str, Any]:
-    """
-    Validate all required fields are present.
-    
-    Args:
-        record: Provider record dictionary
-    
-    Returns:
-        dict: {'valid': bool, 'score': int, 'issue': str or None}
-    """
+    """Validate all required fields are present."""
     return _validate_required_fields(record)
 
 
@@ -159,9 +132,7 @@ def validate_required_fields_tool(record: Dict) -> Dict[str, Any]:
 class Agent1DataValidation:
     """
     Agent 1: Data Validation Engine
-    
     Validates provider records against format rules and approved lists.
-    
     Scoring System:
     - Phone format: 20 points
     - Pincode format: 20 points
@@ -176,30 +147,28 @@ class Agent1DataValidation:
         self.agent = Agent(
             role="Data Validation Specialist",
             goal="Validate healthcare provider records against strict format rules and approved lists",
-            backstory="""You are an expert in healthcare data quality assurance. 
-            Your specialty is validating provider information for accuracy, completeness, 
-            and compliance with Indian medical registration standards. You ensure that 
-            phone numbers, pincodes, specialties, and registration numbers meet 
+            backstory="""You are an expert in healthcare data quality assurance.
+            Your specialty is validating provider information for accuracy, completeness,
+            and compliance with Indian medical registration standards. You ensure that
+            phone numbers, pincodes, specialties, and registration numbers meet
             required format specifications.""",
             verbose=False,
             allow_delegation=False,
             tools=[
-                validate_phone_tool,
-                validate_pincode_tool,
+                validate_phone_tool, 
+                validate_pincode_tool, 
                 validate_specialty_tool,
                 validate_registration_tool,
                 validate_required_fields_tool
             ]
         )
-    
+
     def validate_record(self, record: Dict) -> Dict[str, Any]:
         """
         Validate a single provider record.
-        
         Args:
-            record (dict): Provider record with keys: name, phone, city, specialty, 
+            record (dict): Provider record with keys: name, phone, city, specialty,
                           registration_no, clinic_address, pincode
-        
         Returns:
             dict: {
                 'confidence_agent1': int (0-100),
@@ -209,18 +178,17 @@ class Agent1DataValidation:
             }
         """
         start_time = time.time()
-        
         score = 0
         issues = []
         
         # ====================================================================
         # CHECK 1: REQUIRED FIELDS PRESENT (20 points)
         # ====================================================================
-        result = _validate_required_fields(record)  # Call underlying function directly
+        result = _validate_required_fields(record) # Call underlying function directly
         score += result['score']
         if result['issue']:
             issues.append(result['issue'])
-        
+            
         # If required fields missing, stop validation
         if score == 0:
             execution_time = (time.time() - start_time) * 1000
@@ -230,48 +198,48 @@ class Agent1DataValidation:
                 'execution_time_agent1': round(execution_time, 2),
                 'record_validated': record
             }
-        
+
         # ====================================================================
         # CHECK 2: PHONE FORMAT (20 points)
         # ====================================================================
         phone = record.get('phone', '')
-        result = _validate_phone(phone)  # Call underlying function
+        result = _validate_phone(phone) # Call underlying function
         score += result['score']
         if result['issue']:
             issues.append(result['issue'])
-        
+
         # ====================================================================
         # CHECK 3: PINCODE FORMAT (20 points)
         # ====================================================================
         pincode = record.get('pincode', '')
-        result = _validate_pincode(pincode)  # Call underlying function
+        result = _validate_pincode(pincode) # Call underlying function
         score += result['score']
         if result['issue']:
             issues.append(result['issue'])
-        
+
         # ====================================================================
         # CHECK 4: SPECIALTY IN APPROVED LIST (20 points)
         # ====================================================================
         specialty = record.get('specialty', '')
-        result = _validate_specialty(specialty)  # Call underlying function
+        result = _validate_specialty(specialty) # Call underlying function
         score += result['score']
         if result['issue']:
             issues.append(result['issue'])
-        
+
         # ====================================================================
         # CHECK 5: REGISTRATION NUMBER PATTERN (20 points)
         # ====================================================================
         registration_no = record.get('registration_no', '')
-        result = _validate_registration(registration_no)  # Call underlying function
+        result = _validate_registration(registration_no) # Call underlying function
         score += result['score']
         if result['issue']:
             issues.append(result['issue'])
-        
+            
         # ====================================================================
         # CALCULATE EXECUTION TIME
         # ====================================================================
         execution_time = (time.time() - start_time) * 1000
-        
+
         # ====================================================================
         # RETURN RESULTS
         # ====================================================================
@@ -281,14 +249,12 @@ class Agent1DataValidation:
             'execution_time_agent1': round(execution_time, 2),
             'record_validated': record
         }
-    
+
     def validate_batch(self, records: List[Dict]) -> List[Dict]:
         """
         Validate multiple records.
-        
         Args:
             records (list): List of provider record dictionaries
-        
         Returns:
             list: List of validation results
         """
@@ -296,11 +262,11 @@ class Agent1DataValidation:
         for record in records:
             result = self.validate_record(record)
             results.append({
-                **record,  # Original record
-                **result   # Validation results
+                **record,   # Original record
+                **result    # Validation results
             })
         return results
-    
+        
     def get_agent_info(self) -> Dict[str, str]:
         """Get agent metadata"""
         return {
@@ -311,18 +277,14 @@ class Agent1DataValidation:
             'phase': 'Phase 1 (Rule-based)'
         }
 
-
 # ============================================================================
 # CONVENIENCE FUNCTION (For backward compatibility)
 # ============================================================================
-
 def agent_1_validation(record: Dict) -> Dict[str, Any]:
     """
     Backward-compatible function for Agent 1 validation.
-    
     Args:
         record: Provider record dictionary
-    
     Returns:
         dict: Validation results
     """
@@ -330,21 +292,12 @@ def agent_1_validation(record: Dict) -> Dict[str, Any]:
     return agent.validate_record(record)
 
 
-
 # ============================================================================
 # AGENT 2: INFORMATION ENRICHMENT ENGINE
 # ============================================================================
 
 # Import enrichment helpers
-from enrichment_helpers import (
-    normalize_phone,
-    fuzzy_match_city,
-    normalize_specialty_enhanced,
-    verify_pincode_city,
-    enrich_address,
-    enrich_record_fields
-)
-
+# (Assuming enrichment_helpers is available in path)
 
 # ============================================================================
 # ENRICHMENT TOOLS (CrewAI Tool Pattern)
@@ -354,10 +307,8 @@ from enrichment_helpers import (
 def normalize_phone_tool(phone: str) -> Dict[str, Any]:
     """
     Normalize phone number to standard format.
-    
     Args:
         phone: Phone number string
-    
     Returns:
         dict: {'normalized': str, 'changed': bool, 'description': str, 'score': int}
     """
@@ -369,15 +320,12 @@ def normalize_phone_tool(phone: str) -> Dict[str, Any]:
         'score': 15 if changed else 0
     }
 
-
 @tool("fuzzy_match_city_tool")
 def fuzzy_match_city_tool(city: str) -> Dict[str, Any]:
     """
     Match city using fuzzy string matching.
-    
     Args:
         city: City name string
-    
     Returns:
         dict: {'matched': str, 'changed': bool, 'description': str, 'score': int, 'similarity': int}
     """
@@ -390,15 +338,12 @@ def fuzzy_match_city_tool(city: str) -> Dict[str, Any]:
         'similarity': similarity
     }
 
-
 @tool("normalize_specialty_tool")
 def normalize_specialty_tool(specialty: str) -> Dict[str, Any]:
     """
     Normalize medical specialty.
-    
     Args:
         specialty: Specialty string
-    
     Returns:
         dict: {'normalized': str, 'changed': bool, 'description': str, 'score': int, 'similarity': int}
     """
@@ -411,16 +356,13 @@ def normalize_specialty_tool(specialty: str) -> Dict[str, Any]:
         'similarity': similarity
     }
 
-
 @tool("verify_pincode_city_tool")
 def verify_pincode_city_tool(pincode: str, city: str) -> Dict[str, Any]:
     """
     Verify pincode-city consistency.
-    
     Args:
         pincode: Pincode string
         city: City string
-    
     Returns:
         dict: {'valid': bool, 'warning': str, 'score': int}
     """
@@ -431,17 +373,14 @@ def verify_pincode_city_tool(pincode: str, city: str) -> Dict[str, Any]:
         'score': 10 if (is_valid and not warning) else 0
     }
 
-
 @tool("enrich_address_tool")
 def enrich_address_tool(address: str, city: str, pincode: str) -> Dict[str, Any]:
     """
     Enrich clinic address.
-    
     Args:
         address: Address string
         city: City string
         pincode: Pincode string
-    
     Returns:
         dict: {'enriched': str, 'changed': bool, 'description': str}
     """
@@ -451,7 +390,6 @@ def enrich_address_tool(address: str, city: str, pincode: str) -> Dict[str, Any]
         'changed': changed,
         'description': description or 'No change'
     }
-
 
 # ============================================================================
 # UNDERLYING ENRICHMENT FUNCTIONS (Direct callable)
@@ -467,7 +405,6 @@ def _normalize_phone_func(phone: str) -> Dict[str, Any]:
         'score': 15 if changed else 0
     }
 
-
 def _fuzzy_match_city_func(city: str) -> Dict[str, Any]:
     """Direct callable version of fuzzy_match_city_tool"""
     matched, changed, description, similarity = fuzzy_match_city(city)
@@ -478,7 +415,6 @@ def _fuzzy_match_city_func(city: str) -> Dict[str, Any]:
         'score': 20 if changed else 0,
         'similarity': similarity
     }
-
 
 def _normalize_specialty_func(specialty: str) -> Dict[str, Any]:
     """Direct callable version of normalize_specialty_tool"""
@@ -491,7 +427,6 @@ def _normalize_specialty_func(specialty: str) -> Dict[str, Any]:
         'similarity': similarity
     }
 
-
 def _verify_pincode_city_func(pincode: str, city: str) -> Dict[str, Any]:
     """Direct callable version of verify_pincode_city_tool"""
     is_valid, warning = verify_pincode_city(pincode, city)
@@ -501,7 +436,6 @@ def _verify_pincode_city_func(pincode: str, city: str) -> Dict[str, Any]:
         'score': 10 if (is_valid and not warning) else 0
     }
 
-
 # ============================================================================
 # AGENT 2: INFORMATION ENRICHMENT ENGINE CLASS
 # ============================================================================
@@ -509,9 +443,7 @@ def _verify_pincode_city_func(pincode: str, city: str) -> Dict[str, Any]:
 class Agent2DataEnrichment:
     """
     Agent 2: Information Enrichment Engine
-    
     Enriches and standardizes provider records using fuzzy matching and normalization.
-    
     Enrichment Functions:
     - Phone normalization: +15 points
     - City fuzzy matching: +20 points
@@ -525,10 +457,10 @@ class Agent2DataEnrichment:
         self.agent = Agent(
             role="Data Enrichment Specialist",
             goal="Clean, standardize, and enrich healthcare provider information",
-            backstory="""You are an expert in data quality and standardization. 
-            Your specialty is enriching healthcare provider records by correcting 
-            typos, normalizing formats, and verifying data consistency. You use 
-            fuzzy matching and validation rules to improve data quality while 
+            backstory="""You are an expert in data quality and standardization.
+            Your specialty is enriching healthcare provider records by correcting
+            typos, normalizing formats, and verifying data consistency. You use
+            fuzzy matching and validation rules to improve data quality while
             maintaining an audit trail of all changes.""",
             verbose=False,
             allow_delegation=False,
@@ -540,15 +472,13 @@ class Agent2DataEnrichment:
                 enrich_address_tool
             ]
         )
-    
+
     def enrich_record(self, record: Dict) -> Dict[str, Any]:
         """
         Enrich a single provider record.
-        
         Args:
-            record (dict): Provider record with keys: name, phone, city, specialty, 
+            record (dict): Provider record with keys: name, phone, city, specialty,
                           registration_no, clinic_address, pincode
-        
         Returns:
             dict: {
                 'confidence_agent2': int (0-60),
@@ -558,47 +488,43 @@ class Agent2DataEnrichment:
             }
         """
         start_time = time.time()
-        
         enriched_record = record.copy()
         changes = []
         score = 0
-        
+
         # ====================================================================
         # ENRICHMENT 1: PHONE NORMALIZATION (+15 points)
         # ====================================================================
         if 'phone' in record:
             phone = record.get('phone', '')
             result = _normalize_phone_func(phone)
-            
             if result['changed']:
                 enriched_record['phone'] = result['normalized']
                 changes.append(f"Phone: {result['description']}")
                 score += result['score']
-        
+
         # ====================================================================
         # ENRICHMENT 2: CITY FUZZY MATCHING (+20 points)
         # ====================================================================
         if 'city' in record:
             city = record.get('city', '')
             result = _fuzzy_match_city_func(city)
-            
             if result['changed']:
                 enriched_record['city'] = result['matched']
                 changes.append(f"City: {result['description']}")
                 score += result['score']
-        
+
         # ====================================================================
         # ENRICHMENT 3: SPECIALTY NORMALIZATION (+15 points)
         # ====================================================================
         if 'specialty' in record:
             specialty = record.get('specialty', '')
             result = _normalize_specialty_func(specialty)
-            
             if result['changed']:
                 enriched_record['specialty'] = result['normalized']
                 changes.append(f"Specialty: {result['description']}")
                 score += result['score']
-        
+
         # ====================================================================
         # ENRICHMENT 4: PINCODE-CITY VERIFICATION (+10 points)
         # ====================================================================
@@ -606,17 +532,15 @@ class Agent2DataEnrichment:
             pincode = enriched_record.get('pincode', '')
             city = enriched_record.get('city', '')
             result = _verify_pincode_city_func(pincode, city)
-            
             score += result['score']
-            
             if not result['valid'] or 'not in verification database' in result['warning']:
                 changes.append(f"Pincode-City: {result['warning']}")
-        
+
         # ====================================================================
         # CALCULATE EXECUTION TIME
         # ====================================================================
         execution_time = (time.time() - start_time) * 1000
-        
+
         # ====================================================================
         # RETURN RESULTS
         # ====================================================================
@@ -626,14 +550,12 @@ class Agent2DataEnrichment:
             'execution_time_agent2': round(execution_time, 2),
             'record_enriched': enriched_record
         }
-    
+
     def enrich_batch(self, records: List[Dict]) -> List[Dict]:
         """
         Enrich multiple records.
-        
         Args:
             records (list): List of provider record dictionaries
-        
         Returns:
             list: List of enrichment results
         """
@@ -641,11 +563,11 @@ class Agent2DataEnrichment:
         for record in records:
             result = self.enrich_record(record)
             results.append({
-                **record,  # Original record
-                **result   # Enrichment results
+                **record,   # Original record
+                **result    # Enrichment results
             })
         return results
-    
+
     def get_agent_info(self) -> Dict[str, str]:
         """Get agent metadata"""
         return {
@@ -656,18 +578,14 @@ class Agent2DataEnrichment:
             'phase': 'Phase 1 (Rule-based)'
         }
 
-
 # ============================================================================
 # CONVENIENCE FUNCTION (For backward compatibility)
 # ============================================================================
-
 def agent_2_enrichment(record: Dict) -> Dict[str, Any]:
     """
     Backward-compatible function for Agent 2 enrichment.
-    
     Args:
         record: Provider record dictionary
-    
     Returns:
         dict: Enrichment results
     """
@@ -675,22 +593,12 @@ def agent_2_enrichment(record: Dict) -> Dict[str, Any]:
     return agent.enrich_record(record)
 
 
-
 # ============================================================================
 # AGENT 3: CROSS-VALIDATION ENGINE
 # ============================================================================
 
 # Import cross-validation helpers
-from cross_validation_helpers import (
-    detect_duplicate,
-    verify_registration_number,
-    validate_years_practice,
-    verify_geographic_consistency,
-    cross_validate_record,
-    register_provider,
-    clear_provider_database
-)
-
+# (Assuming cross_validation_helpers is available in path)
 
 # ============================================================================
 # CROSS-VALIDATION TOOLS (CrewAI Tool Pattern)
@@ -700,12 +608,10 @@ from cross_validation_helpers import (
 def detect_duplicate_tool(phone: str, registration_no: str, name: str) -> Dict[str, Any]:
     """
     Detect duplicate provider records.
-    
     Args:
         phone: Phone number
         registration_no: Registration number
         name: Provider name
-    
     Returns:
         dict: {'is_duplicate': bool, 'message': str, 'score': int}
     """
@@ -716,17 +622,14 @@ def detect_duplicate_tool(phone: str, registration_no: str, name: str) -> Dict[s
         'score': 10 if not is_dup else 0
     }
 
-
 @tool("verify_registration_tool")
 def verify_registration_tool(registration_no: str, specialty: str = None, city: str = None) -> Dict[str, Any]:
     """
     Verify registration number authenticity.
-    
     Args:
         registration_no: Registration number
         specialty: Medical specialty (optional)
         city: City (optional)
-    
     Returns:
         dict: {'is_valid': bool, 'message': str, 'score': int}
     """
@@ -737,15 +640,12 @@ def verify_registration_tool(registration_no: str, specialty: str = None, city: 
         'score': score
     }
 
-
 @tool("validate_years_practice_tool")
 def validate_years_practice_tool(years_practice: int) -> Dict[str, Any]:
     """
     Validate years of practice using statistical analysis.
-    
     Args:
         years_practice: Years of practice
-    
     Returns:
         dict: {'is_valid': bool, 'message': str, 'score': int}
     """
@@ -756,17 +656,14 @@ def validate_years_practice_tool(years_practice: int) -> Dict[str, Any]:
         'score': score
     }
 
-
 @tool("verify_geographic_tool")
 def verify_geographic_tool(clinic_address: str, city: str, pincode: str) -> Dict[str, Any]:
     """
     Verify geographic consistency.
-    
     Args:
         clinic_address: Clinic address
         city: City name
         pincode: Pincode
-    
     Returns:
         dict: {'is_consistent': bool, 'message': str, 'score': int}
     """
@@ -776,7 +673,6 @@ def verify_geographic_tool(clinic_address: str, city: str, pincode: str) -> Dict
         'message': msg or 'Geographic data consistent',
         'score': score
     }
-
 
 # ============================================================================
 # UNDERLYING CROSS-VALIDATION FUNCTIONS (Direct callable)
@@ -791,7 +687,6 @@ def _detect_duplicate_func(phone: str, registration_no: str, name: str) -> Dict[
         'score': 10 if not is_dup else 0
     }
 
-
 def _verify_registration_func(registration_no: str, specialty: str = None, city: str = None) -> Dict[str, Any]:
     """Direct callable version of verify_registration_tool"""
     is_valid, msg, score = verify_registration_number(registration_no, specialty, city)
@@ -800,7 +695,6 @@ def _verify_registration_func(registration_no: str, specialty: str = None, city:
         'message': msg or 'Registration verified',
         'score': score
     }
-
 
 def _validate_years_practice_func(years_practice: int) -> Dict[str, Any]:
     """Direct callable version of validate_years_practice_tool"""
@@ -811,7 +705,6 @@ def _validate_years_practice_func(years_practice: int) -> Dict[str, Any]:
         'score': score
     }
 
-
 def _verify_geographic_func(clinic_address: str, city: str, pincode: str) -> Dict[str, Any]:
     """Direct callable version of verify_geographic_tool"""
     is_consistent, msg, score = verify_geographic_consistency(clinic_address, city, pincode)
@@ -821,7 +714,6 @@ def _verify_geographic_func(clinic_address: str, city: str, pincode: str) -> Dic
         'score': score
     }
 
-
 # ============================================================================
 # AGENT 3: CROSS-VALIDATION ENGINE CLASS
 # ============================================================================
@@ -829,13 +721,11 @@ def _verify_geographic_func(clinic_address: str, city: str, pincode: str) -> Dic
 class Agent3CrossValidation:
     """
     Agent 3: Cross-Validation Engine
-    
     Performs fraud detection and cross-validation using:
     - Duplicate detection (fuzzy matching)
     - Registration number verification
     - Statistical anomaly detection
     - Geographic consistency checks
-    
     Cross-Validation Functions:
     - Duplicate detection: +10 points (if no duplicate)
     - Registration verification: +10 points
@@ -849,10 +739,10 @@ class Agent3CrossValidation:
         self.agent = Agent(
             role="Cross-Validation & Fraud Detection Specialist",
             goal="Detect fraud, duplicates, and data inconsistencies in healthcare provider records",
-            backstory="""You are an expert in fraud detection and data cross-validation. 
-            Your specialty is identifying duplicate records, verifying registration authenticity, 
-            detecting statistical anomalies, and ensuring geographic consistency. You use 
-            fuzzy matching, statistical analysis, and multi-source verification to maintain 
+            backstory="""You are an expert in fraud detection and data cross-validation.
+            Your specialty is identifying duplicate records, verifying registration authenticity,
+            detecting statistical anomalies, and ensuring geographic consistency. You use
+            fuzzy matching, statistical analysis, and multi-source verification to maintain
             data integrity and prevent fraud.""",
             verbose=False,
             allow_delegation=False,
@@ -863,16 +753,14 @@ class Agent3CrossValidation:
                 verify_geographic_tool
             ]
         )
-    
+
     def cross_validate_record(self, record: Dict, check_duplicates: bool = True) -> Dict[str, Any]:
         """
         Cross-validate a single provider record.
-        
         Args:
-            record (dict): Provider record with keys: name, phone, city, specialty, 
+            record (dict): Provider record with keys: name, phone, city, specialty,
                           registration_no, clinic_address, pincode, years_practice
             check_duplicates (bool): Whether to check for duplicates
-        
         Returns:
             dict: {
                 'confidence_agent3': int (0-40),
@@ -882,11 +770,10 @@ class Agent3CrossValidation:
             }
         """
         start_time = time.time()
-        
         score = 0
         flags = []
         details = {}
-        
+
         # ====================================================================
         # CHECK 1: DUPLICATE DETECTION (+10 points if no duplicate)
         # ====================================================================
@@ -894,7 +781,6 @@ class Agent3CrossValidation:
             phone = record.get('phone', '')
             registration_no = record.get('registration_no', '')
             name = record.get('name', '')
-            
             result = _detect_duplicate_func(phone, registration_no, name)
             
             if not result['is_duplicate']:
@@ -908,52 +794,62 @@ class Agent3CrossValidation:
             
             details['duplicate_check'] = result
         else:
-            score += 10  # Skip duplicate check
+            score += 10 # Skip duplicate check
             details['duplicate_check'] = {'skipped': True, 'score': 10}
-        
+
         # ====================================================================
         # CHECK 2: REGISTRATION VERIFICATION (+10 points)
         # ====================================================================
         registration_no = record.get('registration_no', '')
         specialty = record.get('specialty', '')
         city = record.get('city', '')
-        
         result = _verify_registration_func(registration_no, specialty, city)
+        
         score += result['score']
         details['registration_check'] = result
         
         if not result['is_valid']:
             flags.append('⚠️ REGISTRATION_INVALID')
-        
+
         # ====================================================================
         # CHECK 3: YEARS PRACTICE VALIDATION (+10 points)
         # ====================================================================
         years_practice = record.get('years_practice')
-        
-        result = _validate_years_practice_func(years_practice)
-        score += result['score']
-        details['years_practice_check'] = result
-        
-        if not result['is_valid']:
-            flags.append('⚠️ ANOMALY_PRACTICE_YEARS')
-        
+
+        # ADAPTIVE LOGIC: If missing, don't penalize
+        if years_practice is None or str(years_practice).strip() == '':
+             score += 10 
+             details['years_practice_check'] = {'is_valid': True, 'message': 'Skipped (Not provided) - No Penalty', 'score': 10}
+        else:
+            result = _validate_years_practice_func(years_practice)
+            score += result['score']
+            details['years_practice_check'] = result
+            if not result['is_valid']:
+                flags.append('⚠️ ANOMALY_PRACTICE_YEARS')
+
         # ====================================================================
         # CHECK 4: GEOGRAPHIC CONSISTENCY (+10 points)
         # ====================================================================
         clinic_address = record.get('clinic_address', '')
-        
-        result = _verify_geographic_func(clinic_address, city, record.get('pincode', ''))
-        score += result['score']
-        details['geographic_check'] = result
-        
-        if not result['is_consistent']:
-            flags.append('⚠️ GEOGRAPHIC_MISMATCH')
-        
+        city = record.get('city', '')
+        pincode = record.get('pincode', '')
+
+        # ADAPTIVE LOGIC: If missing address parts, don't penalize
+        if not clinic_address or not city or not pincode:
+             score += 10
+             details['geographic_check'] = {'is_consistent': True, 'message': 'Skipped (Incomplete address) - No Penalty', 'score': 10}
+        else:
+            result = _verify_geographic_func(clinic_address, city, pincode)
+            score += result['score']
+            details['geographic_check'] = result
+            if not result['is_consistent']:
+                flags.append('⚠️ GEOGRAPHIC_MISMATCH')
+
         # ====================================================================
         # CALCULATE EXECUTION TIME
         # ====================================================================
         execution_time = (time.time() - start_time) * 1000
-        
+
         # ====================================================================
         # RETURN RESULTS
         # ====================================================================
@@ -963,15 +859,13 @@ class Agent3CrossValidation:
             'execution_time_agent3': round(execution_time, 2),
             'cross_validation_details': details
         }
-    
+
     def cross_validate_batch(self, records: List[Dict], check_duplicates: bool = False) -> List[Dict]:
         """
         Cross-validate multiple records.
-        
         Args:
             records (list): List of provider record dictionaries
             check_duplicates (bool): Whether to check for duplicates (default False for batch)
-        
         Returns:
             list: List of cross-validation results
         """
@@ -979,29 +873,27 @@ class Agent3CrossValidation:
         for record in records:
             result = self.cross_validate_record(record, check_duplicates)
             results.append({
-                **record,  # Original record
-                **result   # Cross-validation results
+                **record,   # Original record
+                **result    # Cross-validation results
             })
         return results
-    
+
     def register_provider(self, record: Dict):
         """
         Register a provider in the duplicate detection database.
-        
         Args:
             record (dict): Provider record
         """
         phone = record.get('phone', '')
         registration_no = record.get('registration_no', '')
         name = record.get('name', '')
-        
         if phone and registration_no and name:
             register_provider(phone, registration_no, name)
-    
+            
     def clear_database(self):
         """Clear the provider database (for testing)"""
         clear_provider_database()
-    
+
     def get_agent_info(self) -> Dict[str, str]:
         """Get agent metadata"""
         return {
@@ -1012,19 +904,15 @@ class Agent3CrossValidation:
             'phase': 'Phase 1 (Rule-based)'
         }
 
-
 # ============================================================================
 # CONVENIENCE FUNCTION (For backward compatibility)
 # ============================================================================
-
 def agent_3_cross_validation(record: Dict, check_duplicates: bool = True) -> Dict[str, Any]:
     """
     Backward-compatible function for Agent 3 cross-validation.
-    
     Args:
         record: Provider record dictionary
         check_duplicates: Whether to check for duplicates
-    
     Returns:
         dict: Cross-validation results
     """
@@ -1032,11 +920,9 @@ def agent_3_cross_validation(record: Dict, check_duplicates: bool = True) -> Dic
     return agent.cross_validate_record(record, check_duplicates)
 
 
-
 # ============================================================================
 # SELF-TEST FOR ALL AGENTS (Run when module is executed directly)
 # ============================================================================
-
 if __name__ == "__main__":
     print("\n" + "="*70)
     print("MULTI-AGENT TEST SUITE - AGENTS 1, 2 & 3")
@@ -1052,14 +938,15 @@ if __name__ == "__main__":
     agent1 = Agent1DataValidation()
     info1 = agent1.get_agent_info()
     print(f"\n🤖 Agent 1 Info:")
-    print(f"   Name: {info1['name']}")
-    print(f"   Role: {info1['role']}")
-    print(f"   Tools: {len(info1['tools'])}")
+    print(f"  Name: {info1['name']}")
+    print(f"  Role: {info1['role']}")
+    print(f"  Tools: {len(info1['tools'])}")
     
     # Agent 1 Test
     print("\n" + "-"*70)
     print("📋 Agent 1 Test: Perfect Record")
     print("-"*70)
+    
     test_record_agent1 = {
         'id': 1,
         'name': 'Dr. Rajesh Sharma',
@@ -1071,12 +958,13 @@ if __name__ == "__main__":
         'clinic_address': '123 MG Road Bangalore',
         'pincode': '560001'
     }
-    result1 = agent1.validate_record(test_record_agent1)
-    print(f"   Validation Score: {result1['confidence_agent1']}/100")
-    print(f"   Issues: {result1['issues_validation'] or 'None'}")
-    print(f"   Time: {result1['execution_time_agent1']} ms")
-    print("   ✓ AGENT 1 WORKING")
     
+    result1 = agent1.validate_record(test_record_agent1)
+    print(f"  Validation Score: {result1['confidence_agent1']}/100")
+    print(f"  Issues: {result1['issues_validation'] or 'None'}")
+    print(f"  Time: {result1['execution_time_agent1']} ms")
+    print("  ✓ AGENT 1 WORKING")
+
     # ========================================================================
     # AGENT 2 TESTS
     # ========================================================================
@@ -1087,14 +975,15 @@ if __name__ == "__main__":
     agent2 = Agent2DataEnrichment()
     info2 = agent2.get_agent_info()
     print(f"\n🤖 Agent 2 Info:")
-    print(f"   Name: {info2['name']}")
-    print(f"   Role: {info2['role']}")
-    print(f"   Tools: {len(info2['tools'])}")
+    print(f"  Name: {info2['name']}")
+    print(f"  Role: {info2['role']}")
+    print(f"  Tools: {len(info2['tools'])}")
     
     # Agent 2 Test
     print("\n" + "-"*70)
     print("📋 Agent 2 Test: Record with Enrichment Needs")
     print("-"*70)
+    
     test_record_agent2 = {
         'id': 1,
         'name': 'Dr. Test',
@@ -1105,12 +994,13 @@ if __name__ == "__main__":
         'pincode': '560001',
         'registration_no': 'MCI10012345'
     }
-    result2 = agent2.enrich_record(test_record_agent2)
-    print(f"   Enrichment Score: {result2['confidence_agent2']}/60")
-    print(f"   Changes: {len(result2['enrichment_changes'])}")
-    print(f"   Time: {result2['execution_time_agent2']} ms")
-    print("   ✓ AGENT 2 WORKING")
     
+    result2 = agent2.enrich_record(test_record_agent2)
+    print(f"  Enrichment Score: {result2['confidence_agent2']}/60")
+    print(f"  Changes: {len(result2['enrichment_changes'])}")
+    print(f"  Time: {result2['execution_time_agent2']} ms")
+    print("  ✓ AGENT 2 WORKING")
+
     # ========================================================================
     # AGENT 3 TESTS
     # ========================================================================
@@ -1119,18 +1009,18 @@ if __name__ == "__main__":
     print("="*70)
     
     agent3 = Agent3CrossValidation()
-    agent3.clear_database()  # Clear for testing
-    
+    agent3.clear_database() # Clear for testing
     info3 = agent3.get_agent_info()
     print(f"\n🤖 Agent 3 Info:")
-    print(f"   Name: {info3['name']}")
-    print(f"   Role: {info3['role']}")
-    print(f"   Tools: {len(info3['tools'])}")
+    print(f"  Name: {info3['name']}")
+    print(f"  Role: {info3['role']}")
+    print(f"  Tools: {len(info3['tools'])}")
     
     # Agent 3 Test 1: Clean record (no fraud)
     print("\n" + "-"*70)
     print("📋 Agent 3 Test 1: Clean Record")
     print("-"*70)
+    
     test_record_agent3 = {
         'id': 1,
         'name': 'Dr. Test',
@@ -1142,28 +1032,32 @@ if __name__ == "__main__":
         'clinic_address': '123 MG Road Bangalore',
         'pincode': '560001'
     }
-    result3 = agent3.cross_validate_record(test_record_agent3)
-    print(f"   Cross-Validation Score: {result3['confidence_agent3']}/40")
-    print(f"   Flags: {result3['cross_validation_flags'] or 'None'}")
-    print(f"   Time: {result3['execution_time_agent3']} ms")
-    assert result3['confidence_agent3'] == 40, "Should score 40/40"
-    print("   ✓ PASSED")
     
+    result3 = agent3.cross_validate_record(test_record_agent3)
+    print(f"  Cross-Validation Score: {result3['confidence_agent3']}/40")
+    print(f"  Flags: {result3['cross_validation_flags'] or 'None'}")
+    print(f"  Time: {result3['execution_time_agent3']} ms")
+    assert result3['confidence_agent3'] == 40, "Should score 40/40"
+    print("  ✓ PASSED")
+
     # Agent 3 Test 2: Duplicate detection
     print("\n" + "-"*70)
     print("📋 Agent 3 Test 2: Duplicate Detection")
     print("-"*70)
+    
     # Register first provider
     agent3.register_provider(test_record_agent3)
+    
     # Try to add duplicate
     duplicate_record = test_record_agent3.copy()
     result3_dup = agent3.cross_validate_record(duplicate_record)
-    print(f"   Cross-Validation Score: {result3_dup['confidence_agent3']}/40")
-    print(f"   Flags: {result3_dup['cross_validation_flags']}")
+    
+    print(f"  Cross-Validation Score: {result3_dup['confidence_agent3']}/40")
+    print(f"  Flags: {result3_dup['cross_validation_flags']}")
     assert result3_dup['confidence_agent3'] == 30, "Should score 30/40 (duplicate detected)"
     assert len(result3_dup['cross_validation_flags']) > 0, "Should have duplicate flag"
-    print("   ✓ PASSED")
-    
+    print("  ✓ PASSED")
+
     # ========================================================================
     # COMBINED AGENTS 1 + 2 + 3 PIPELINE
     # ========================================================================
@@ -1175,8 +1069,8 @@ if __name__ == "__main__":
     print("📋 Combined Test: Full Validation Pipeline")
     print("-"*70)
     
-    agent3.clear_database()  # Clear for fresh test
-    
+    agent3.clear_database() # Clear for fresh test
+
     combined_record = {
         'id': 99,
         'name': 'Dr. Combined Test',
@@ -1191,24 +1085,26 @@ if __name__ == "__main__":
     
     # Step 1: Validate with Agent 1
     val_result = agent1.validate_record(combined_record)
-    print(f"   Agent 1 Score: {val_result['confidence_agent1']}/100")
+    print(f"  Agent 1 Score: {val_result['confidence_agent1']}/100")
     
     # Step 2: Enrich with Agent 2
     enr_result = agent2.enrich_record(combined_record)
-    print(f"   Agent 2 Score: {enr_result['confidence_agent2']}/60")
+    print(f"  Agent 2 Score: {enr_result['confidence_agent2']}/60")
     
     # Step 3: Cross-validate with Agent 3
     cross_result = agent3.cross_validate_record(enr_result['record_enriched'])
-    print(f"   Agent 3 Score: {cross_result['confidence_agent3']}/40")
+    print(f"  Agent 3 Score: {cross_result['confidence_agent3']}/40")
     
     # Combined score
     combined_score = (val_result['confidence_agent1'] + 
-                     enr_result['confidence_agent2'] + 
-                     cross_result['confidence_agent3'])
-    print(f"   Combined Score: {combined_score}/200 ({combined_score/200*100:.1f}%)")
-    print(f"   Enrichment Changes: {len(enr_result['enrichment_changes'])}")
-    print(f"   Fraud Flags: {cross_result['cross_validation_flags'] or 'None'}")
-    print("   ✓ MULTI-AGENT PIPELINE WORKING")
+                      enr_result['confidence_agent2'] + 
+                      cross_result['confidence_agent3'])
+                      
+    print(f"  Combined Score: {combined_score}/200 ({combined_score/200*100:.1f}%)")
+    print(f"  Enrichment Changes: {len(enr_result['enrichment_changes'])}")
+    print(f"  Fraud Flags: {cross_result['cross_validation_flags'] or 'None'}")
+    
+    print("  ✓ MULTI-AGENT PIPELINE WORKING")
     
     print("\n" + "="*70)
     print("✅ ALL TESTS PASSED - AGENTS 1, 2 & 3 WORKING CORRECTLY")

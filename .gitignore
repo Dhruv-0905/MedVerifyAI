@@ -55,3 +55,10 @@ htmlcov/
 # --- OS ---
 .DS_Store
 Thumbs.db
+
+# Test outputs
+test_results.csv
+test_results.json
+*.csv
+!samples/*.csv
+
