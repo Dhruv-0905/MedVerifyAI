@@ -203,6 +203,11 @@ def validate_years_practice(years_practice: int) -> Tuple[bool, Optional[str], i
     if years_practice is None:
         return True, "Years practice not provided (skipping check)", 10
     
+        # Convert to string and check if empty or "None"
+    years_str = str(years_practice).strip()
+    
+    if years_str == '' or years_str.lower() == 'none':
+        return True, "Years practice not provided (skipping check)", 10
     try:
         years = int(years_practice)
     except (ValueError, TypeError):
